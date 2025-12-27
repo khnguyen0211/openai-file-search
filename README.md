@@ -66,14 +66,20 @@ OPENAI_API_KEY=sk-your-api-key-here
 python build_vector_store.py
 ```
 
-**Search your indexed data:**
+**Start the interactive chatbot:**
 ```bash
-python search_vector_store.py
+python chatbot.py
 ```
 
-**View and manage vector stores:**
+The chatbot provides an interactive interface with commands:
+- `/help` - Show available commands
+- `/clear` - Clear conversation history
+- `/model` - Switch between GPT-4o and GPT-4o-mini
+- `/exit` - Exit the chatbot
+
+**For programmatic search (returns raw data):**
 ```bash
-python list_vector_store.py
+python search_vector_store.py
 ```
 
 ## 💻 Usage
@@ -99,62 +105,45 @@ vector_store_id = builder.build(
 builder.save_vector_store_id("vector_store_id.txt")
 ```
 
-### 2. Searching Vector Stores
+### 2. Interactive Chatbot (Recommended)
 
-Perform semantic searches and get AI-powered responses:
+The easiest way to interact with your vector store - a conversational AI interface:
+
+```python
+from chatbot import Chatbot
+
+# Initialize chatbot (auto-loads vector store)
+bot = Chatbot(model="gpt-4o")
+
+# Interactive mode (default when running chatbot.py)
+# Or programmatic usage:
+response = bot.chat("Find Samsung phones under $500")
+print(response)  # AI-generated answer with context
+
+# Chat without vector context (pure LLM knowledge)
+response = bot.chat("Hello, who are you?", use_vector_context=False)
+```
+
+### 3. Raw Vector Search (Advanced)
+
+For applications needing raw search results without AI processing:
 
 ```python
 from search_vector_store import VectorStoreSearcher
 
-# Initialize searcher (auto-loads vector store ID)
+# Initialize searcher
 searcher = VectorStoreSearcher()
 
-# Search and display results
-searcher.search_and_display(
-    query="Find Samsung phones under $500",
-    max_num_results=5,
-    include_search_results=True
-)
-```
-
-**Advanced Search:**
-```python
-# Custom search with specific parameters
-response = searcher.search(
-    query="Compare iPhone 15 Pro and Galaxy S24",
-    max_num_results=3,
-    include_search_results=True
+# Get raw search results
+results = searcher.search(
+    query="Samsung Galaxy S24",
+    max_num_results=5
 )
 
-# Display formatted results
-searcher.display_results(response)
-
-# Access raw JSON for custom processing
-raw_data = searcher.get_raw_response(response)
-```
-
-### 3. Managing Vector Stores
-
-List, inspect, and manage your vector stores:
-
-```python
-from list_vector_store import VectorStoreManager
-
-# Initialize manager
-manager = VectorStoreManager()
-
-# List all vector stores
-vector_stores = manager.list_vector_stores(limit=20)
-manager.display_vector_stores(vector_stores)
-
-# Get details of specific store
-manager.display_vector_store_details("vs_abc123...")
-
-# Find by name
-vs = manager.find_vector_store_by_name("product_catalog")
-if vs:
-    files = manager.list_vector_store_files(vs.id)
-    print(f"Store contains {len(files)} files")
+# Process raw results
+for result in results:
+    print(f"Score: {result['score']}")
+    print(f"Content: {result['content']}")
 ```
 
 ## 🏗️ Architecture
@@ -164,6 +153,7 @@ if vs:
 ```
 ┌─────────────────────────────────────────┐
 │     VectorStoreBuilder                  │
+│     (build_vector_store.py)             │
 │                                         │
 │  • Upload files to OpenAI               │
 │  • Create vector stores                 │
@@ -172,32 +162,50 @@ if vs:
 └─────────────────────────────────────────┘
                    │
                    ▼
-┌─────────────────────────────────────────┐
-│     VectorStoreSearcher                 │
-│                                         │
-│  • Semantic search queries              │
-│  • AI-powered responses                 │
-│  • Citation extraction                  │
-│  • Result formatting                    │
-└─────────────────────────────────────────┘
+         vector_store_id.txt
                    │
-                   ▼
-┌─────────────────────────────────────────┐
-│     VectorStoreManager                  │
-│                                         │
-│  • List all stores                      │
-│  • View store details                   │
-│  • Manage files                         │
-│  • Delete operations                    │
-└─────────────────────────────────────────┘
+    ┌──────────────┴──────────────┐
+    │                             │
+    ▼                             ▼
+┌─────────────────────┐   ┌─────────────────────┐
+│ VectorStoreSearcher │   │      Chatbot        │
+│ (search_vector...)  │   │   (chatbot.py)      │
+│                     │   │                     │
+│ • Pure search layer │   │ • LLM integration   │
+│ • Returns raw data  │   │ • Conversation mgmt │
+│ • No AI processing  │   │ • User interface    │
+│                     │   │ • Uses Searcher     │
+└─────────────────────┘   └─────────────────────┘
+         │                         │
+         │                         │
+         ▼                         ▼
+   Raw Results            AI-Powered Responses
+  (for apps/APIs)       (for end users)
 ```
+
+### Separation of Concerns (SOLID Principles)
+
+**1. VectorStoreBuilder** - Data Preparation Layer
+- Single Responsibility: Build and manage vector stores
+- Used once during setup or data updates
+
+**2. VectorStoreSearcher** - Data Access Layer  
+- Single Responsibility: Execute searches, return raw results
+- No LLM, no formatting, pure search functionality
+- Reusable by any application layer
+
+**3. Chatbot** - Application/Presentation Layer
+- Single Responsibility: User interaction and AI responses
+- Depends on VectorStoreSearcher (Dependency Injection)
+- Handles LLM calls, conversation state, formatting
 
 ### Project Structure
 
 ```
 openai-file-search/
 ├── build_vector_store.py      # Vector store creation and indexing
-├── search_vector_store.py     # Search functionality and AI responses
+├── search_vector_store.py     # Pure search functionality (data layer)
+├── chatbot.py                 # Interactive AI chatbot (application layer)
 ├── list_vector_store.py       # Vector store management
 │
 ├── data/                      # Data directory
@@ -207,6 +215,7 @@ openai-file-search/
 ├── requirements.txt           # Python dependencies
 ├── SETUP.md                   # Detailed documentation (Vietnamese)
 ├── QUICK_REF.md               # Quick reference guide
+├── learning.md                # Educational guide about LLM & Vector Search
 └── vector_store_id.txt        # Current vector store ID (auto-generated)
 ```
 
@@ -221,14 +230,23 @@ openai-file-search/
 | `create_vector_store(name)` | Create new vector store | `vector_store_id` |
 | `save_vector_store_id(output_file)` | Save store ID to file | `None` |
 
-### VectorStoreSearcher
+### VectorStoreSearcher (Data Layer)
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `search_and_display(query, max_num_results, ...)` | Search and display results | `response` |
-| `search(query, max_num_results, filters)` | Execute search query | `response` |
-| `display_results(response)` | Format and print results | `None` |
-| `get_raw_response(response)` | Get JSON response | `str` |
+| `search(query, max_num_results, filters)` | Execute search, return raw results | `List[Dict]` |
+| `get_vector_store_info()` | Get vector store metadata | `Dict` |
+
+**Note:** This class returns raw search results only, without LLM processing.
+
+### Chatbot (Application Layer)
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `chat(message, use_vector_context)` | Get AI response with optional context | `str` |
+| `clear_history()` | Clear conversation history | `None` |
+| `set_model(model)` | Change LLM model | `None` |
+| `get_history()` | Get conversation history | `List[Dict]` |
 
 ### VectorStoreManager
 
@@ -263,34 +281,61 @@ OPENAI_API_KEY=sk-your-openai-api-key
 
 ## 🎯 Use Cases
 
-### Product Catalog Search
+### Interactive Customer Support
 ```python
-# Index product database
-builder = VectorStoreBuilder()
-builder.build(csv_file_path="data/products.csv")
+# Use chatbot for conversational interface
+from chatbot import Chatbot
 
-# Intelligent product search
+bot = Chatbot()
+
+# Natural language interaction
+response = bot.chat("I need a phone with good camera under $400")
+print(response)  # AI explains options with specific recommendations
+```
+
+### API Integration (E-commerce Search)
+```python
+# Use raw searcher for API endpoints
+from search_vector_store import VectorStoreSearcher
+from fastapi import FastAPI
+
+app = FastAPI()
 searcher = VectorStoreSearcher()
-searcher.search_and_display("phones with 5000mAh battery under $400")
+
+@app.get("/products/search")
+async def search_products(q: str):
+    results = searcher.search(q, max_num_results=10)
+    return {"results": results}  # Return raw data for frontend processing
 ```
 
 ### Knowledge Base Q&A
 ```python
 # Build knowledge base from documents
+builder = VectorStoreBuilder()
 builder.build(csv_file_path="data/documentation.csv")
 
-# Ask questions
-searcher.search_and_display("How to configure authentication?")
+# Interactive Q&A
+bot = Chatbot()
+while True:
+    question = input("Ask a question: ")
+    if question.lower() == 'exit':
+        break
+    answer = bot.chat(question)
+    print(f"\nAnswer: {answer}\n")
 ```
 
 ### Data Analytics Assistant
 ```python
-# Search with filters and custom parameters
-response = searcher.search(
-    query="Analyze sales trends for Q4",
-    max_num_results=10,
-    include_search_results=True
-)
+# Combine chatbot with programmatic search
+bot = Chatbot()
+searcher = VectorStoreSearcher()
+
+# Natural language query
+nl_response = bot.chat("What are the trending products in Q4?")
+
+# Get raw data for analysis
+raw_results = searcher.search("Q4 trending products", max_num_results=50)
+# Process raw_results for charts, reports, etc.
 ```
 
 ## 🐛 Troubleshooting
