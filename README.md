@@ -1,411 +1,350 @@
-File search
-===========
+# OpenAI File Search
 
-Allow models to search your files for relevant information before generating a response.
+> A Python-based vector store management system for OpenAI's File Search API, providing seamless document indexing and intelligent semantic search capabilities.
 
-File search is a tool available in the [Responses API](/docs/api-reference/responses). It enables models to retrieve information in a knowledge base of previously uploaded files through semantic and keyword search. By creating vector stores and uploading files to them, you can augment the models' inherent knowledge by giving them access to these knowledge bases or `vector_stores`.
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-API-green.svg)](https://platform.openai.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-To learn more about how vector stores and semantic search work, refer to our [retrieval guide](/docs/guides/retrieval).
+## 📋 Overview
 
-This is a hosted tool managed by OpenAI, meaning you don't have to implement code on your end to handle its execution. When the model decides to use it, it will automatically call the tool, retrieve information from your files, and return an output.
+This project implements a comprehensive vector store management system using OpenAI's Responses API and File Search capabilities. It enables users to build, search, and manage vector stores for efficient document retrieval and AI-powered question answering.
 
-How to use
-----------
+### Key Features
 
-Prior to using file search with the Responses API, you need to have set up a knowledge base in a vector store and uploaded files to it.
+- **🔨 Vector Store Builder**: Automated pipeline for uploading files and creating indexed vector stores
+- **🔍 Intelligent Search**: Semantic and keyword-based search with AI-generated responses and citations
+- **📊 Store Management**: Complete lifecycle management of vector stores with detailed analytics
+- **💾 File Support**: CSV, PDF, TXT, JSON, Markdown, and code files
+- **🎯 Customizable**: Flexible search parameters, result limits, and metadata filtering
+- **📝 Rich Output**: Formatted results with citations, annotations, and relevance scores
 
-Create a vector store and upload a file
+## 🚀 Quick Start
 
-Follow these steps to create a vector store and upload a file to it. You can use [this example file](https://cdn.openai.com/API/docs/deep_research_blog.pdf) or upload your own.
+### Prerequisites
 
-#### Upload the file to the File API
+- Python 3.8 or higher
+- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
 
-Upload a file
+### Installation
 
-```
-import requests
-from io import BytesIO
-from openai import OpenAI
-
-client = OpenAI()
-
-def create_file(client, file_path):
-    if file_path.startswith("http://") or file_path.startswith("https://"):
-        # Download the file content from the URL
-        response = requests.get(file_path)
-        file_content = BytesIO(response.content)
-        file_name = file_path.split("/")[-1]
-        file_tuple = (file_name, file_content)
-        result = client.files.create(
-            file=file_tuple,
-            purpose="assistants"
-        )
-    else:
-        # Handle local file path
-        with open(file_path, "rb") as file_content:
-            result = client.files.create(
-                file=file_content,
-                purpose="assistants"
-            )
-    print(result.id)
-    return result.id
-
-# Replace with your own file path or URL
-file_id = create_file(client, "https://cdn.openai.com/API/docs/deep_research_blog.pdf")
+1. **Clone the repository**
+```bash
+git clone https://github.com/yourusername/openai-file-search.git
+cd openai-file-search
 ```
 
-```
-import fs from "fs";
-import OpenAI from "openai";
-const openai = new OpenAI();
+2. **Create virtual environment**
+```bash
+python -m venv venv
 
-async function createFile(filePath) {
-  let result;
-  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
-    // Download the file content from the URL
-    const res = await fetch(filePath);
-    const buffer = await res.arrayBuffer();
-    const urlParts = filePath.split("/");
-    const fileName = urlParts[urlParts.length - 1];
-    const file = new File([buffer], fileName);
-    result = await openai.files.create({
-      file: file,
-      purpose: "assistants",
-    });
-  } else {
-    // Handle local file path
-    const fileContent = fs.createReadStream(filePath);
-    result = await openai.files.create({
-      file: fileContent,
-      purpose: "assistants",
-    });
-  }
-  return result.id;
-}
+# Windows
+venv\Scripts\activate
 
-// Replace with your own file path or URL
-const fileId = await createFile(
-  "https://cdn.openai.com/API/docs/deep_research_blog.pdf"
-);
-
-console.log(fileId);
+# Linux/Mac
+source venv/bin/activate
 ```
 
-#### Create a vector store
-
-Create a vector store
-
+3. **Install dependencies**
+```bash
+pip install -r requirements.txt
 ```
-vector_store = client.vector_stores.create(
-    name="knowledge_base"
+
+4. **Configure API key**
+```bash
+# Copy example environment file
+cp .env.example .env
+
+# Edit .env and add your OpenAI API key
+OPENAI_API_KEY=sk-your-api-key-here
+```
+
+### First Run
+
+**Build a vector store from your CSV data:**
+```bash
+python build_vector_store.py
+```
+
+**Search your indexed data:**
+```bash
+python search_vector_store.py
+```
+
+**View and manage vector stores:**
+```bash
+python list_vector_store.py
+```
+
+## 💻 Usage
+
+### 1. Building Vector Stores
+
+Create and index your documents for searchable vector storage:
+
+```python
+from build_vector_store import VectorStoreBuilder
+
+# Initialize builder
+builder = VectorStoreBuilder()
+
+# Build vector store from CSV file
+vector_store_id = builder.build(
+    csv_file_path="data/hoanghamobile.csv",
+    vector_store_name="product_catalog",
+    max_wait=60
 )
-print(vector_store.id)
+
+# Save the ID for later use
+builder.save_vector_store_id("vector_store_id.txt")
 ```
 
-```
-const vectorStore = await openai.vectorStores.create({
-    name: "knowledge_base",
-});
-console.log(vectorStore.id);
-```
+### 2. Searching Vector Stores
 
-#### Add the file to the vector store
+Perform semantic searches and get AI-powered responses:
 
-Add a file to a vector store
+```python
+from search_vector_store import VectorStoreSearcher
 
-```
-result = client.vector_stores.files.create(
-    vector_store_id=vector_store.id,
-    file_id=file_id
+# Initialize searcher (auto-loads vector store ID)
+searcher = VectorStoreSearcher()
+
+# Search and display results
+searcher.search_and_display(
+    query="Find Samsung phones under $500",
+    max_num_results=5,
+    include_search_results=True
 )
-print(result)
 ```
 
-```
-await openai.vectorStores.files.create(
-    vectorStore.id,
-    {
-        file_id: fileId,
-    }
-});
-```
-
-#### Check status
-
-Run this code until the file is ready to be used (i.e., when the status is `completed`).
-
-Check status
-
-```
-result = client.vector_stores.files.list(
-    vector_store_id=vector_store.id
+**Advanced Search:**
+```python
+# Custom search with specific parameters
+response = searcher.search(
+    query="Compare iPhone 15 Pro and Galaxy S24",
+    max_num_results=3,
+    include_search_results=True
 )
-print(result)
+
+# Display formatted results
+searcher.display_results(response)
+
+# Access raw JSON for custom processing
+raw_data = searcher.get_raw_response(response)
 ```
 
+### 3. Managing Vector Stores
+
+List, inspect, and manage your vector stores:
+
+```python
+from list_vector_store import VectorStoreManager
+
+# Initialize manager
+manager = VectorStoreManager()
+
+# List all vector stores
+vector_stores = manager.list_vector_stores(limit=20)
+manager.display_vector_stores(vector_stores)
+
+# Get details of specific store
+manager.display_vector_store_details("vs_abc123...")
+
+# Find by name
+vs = manager.find_vector_store_by_name("product_catalog")
+if vs:
+    files = manager.list_vector_store_files(vs.id)
+    print(f"Store contains {len(files)} files")
 ```
-const result = await openai.vectorStores.files.list({
-    vector_store_id: vectorStore.id,
-});
-console.log(result);
-```
 
-Once your knowledge base is set up, you can include the `file_search` tool in the list of tools available to the model, along with the list of vector stores in which to search.
+## 🏗️ Architecture
 
-File search tool
+### Core Components
 
 ```
-from openai import OpenAI
-client = OpenAI()
+┌─────────────────────────────────────────┐
+│     VectorStoreBuilder                  │
+│                                         │
+│  • Upload files to OpenAI               │
+│  • Create vector stores                 │
+│  • Monitor indexing status              │
+│  • Manage store lifecycle               │
+└─────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────┐
+│     VectorStoreSearcher                 │
+│                                         │
+│  • Semantic search queries              │
+│  • AI-powered responses                 │
+│  • Citation extraction                  │
+│  • Result formatting                    │
+└─────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────┐
+│     VectorStoreManager                  │
+│                                         │
+│  • List all stores                      │
+│  • View store details                   │
+│  • Manage files                         │
+│  • Delete operations                    │
+└─────────────────────────────────────────┘
+```
 
-response = client.responses.create(
-    model="gpt-4.1",
-    input="What is deep research by OpenAI?",
-    tools=[{
-        "type": "file_search",
-        "vector_store_ids": ["<vector_store_id>"]
-    }]
+### Project Structure
+
+```
+openai-file-search/
+├── build_vector_store.py      # Vector store creation and indexing
+├── search_vector_store.py     # Search functionality and AI responses
+├── list_vector_store.py       # Vector store management
+│
+├── data/                      # Data directory
+│   └── hoanghamobile.csv      # Sample dataset (2995 products)
+│
+├── .env                       # Environment variables (API keys)
+├── requirements.txt           # Python dependencies
+├── SETUP.md                   # Detailed documentation (Vietnamese)
+├── QUICK_REF.md               # Quick reference guide
+└── vector_store_id.txt        # Current vector store ID (auto-generated)
+```
+
+## 📚 API Reference
+
+### VectorStoreBuilder
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `build(csv_file_path, vector_store_name, max_wait)` | Build complete vector store | `vector_store_id` |
+| `upload_file(file_path)` | Upload file to OpenAI | `file_id` |
+| `create_vector_store(name)` | Create new vector store | `vector_store_id` |
+| `save_vector_store_id(output_file)` | Save store ID to file | `None` |
+
+### VectorStoreSearcher
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `search_and_display(query, max_num_results, ...)` | Search and display results | `response` |
+| `search(query, max_num_results, filters)` | Execute search query | `response` |
+| `display_results(response)` | Format and print results | `None` |
+| `get_raw_response(response)` | Get JSON response | `str` |
+
+### VectorStoreManager
+
+| Method | Description | Returns |
+|--------|-------------|---------|
+| `list_vector_stores(limit)` | List all stores | `List[VectorStore]` |
+| `get_vector_store_details(vector_store_id)` | Get store details | `VectorStore` |
+| `list_vector_store_files(vector_store_id)` | List files in store | `List[File]` |
+| `find_vector_store_by_name(name)` | Find store by name | `VectorStore \| None` |
+| `delete_vector_store(vector_store_id, confirm)` | Delete store | `bool` |
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# OpenAI API Configuration
+OPENAI_API_KEY=sk-your-openai-api-key
+
+# Optional: Custom model settings
+# DEFAULT_MODEL=gpt-4o
+```
+
+### Supported File Types
+
+- **Documents**: `.pdf`, `.txt`, `.md`, `.doc`, `.docx`
+- **Data**: `.csv`, `.json`
+- **Code**: `.py`, `.js`, `.ts`, `.java`, `.cpp`, `.go`, `.rb`, `.php`
+- **Presentations**: `.pptx`
+
+## 🎯 Use Cases
+
+### Product Catalog Search
+```python
+# Index product database
+builder = VectorStoreBuilder()
+builder.build(csv_file_path="data/products.csv")
+
+# Intelligent product search
+searcher = VectorStoreSearcher()
+searcher.search_and_display("phones with 5000mAh battery under $400")
+```
+
+### Knowledge Base Q&A
+```python
+# Build knowledge base from documents
+builder.build(csv_file_path="data/documentation.csv")
+
+# Ask questions
+searcher.search_and_display("How to configure authentication?")
+```
+
+### Data Analytics Assistant
+```python
+# Search with filters and custom parameters
+response = searcher.search(
+    query="Analyze sales trends for Q4",
+    max_num_results=10,
+    include_search_results=True
 )
-print(response)
 ```
 
-```
-import OpenAI from "openai";
-const openai = new OpenAI();
+## 🐛 Troubleshooting
 
-const response = await openai.responses.create({
-    model: "gpt-4.1",
-    input: "What is deep research by OpenAI?",
-    tools: [
-        {
-            type: "file_search",
-            vector_store_ids: ["<vector_store_id>"],
-        },
-    ],
-});
-console.log(response);
-```
+### Common Issues
 
-```
-using OpenAI.Responses;
+| Issue | Solution |
+|-------|----------|
+| `ModuleNotFoundError: No module named 'dotenv'` | Run `pip install -r requirements.txt` |
+| `OPENAI_API_KEY not found` | Check `.env` file exists and contains valid API key |
+| `File not found` | Ensure CSV file is in `data/` directory |
+| `Timeout waiting for vector store` | Increase `max_wait` parameter or check internet connection |
 
-string key = Environment.GetEnvironmentVariable("OPENAI_API_KEY")!;
-OpenAIResponseClient client = new(model: "gpt-5", apiKey: key);
+### Debug Mode
 
-ResponseCreationOptions options = new();
-options.Tools.Add(ResponseTool.CreateFileSearchTool(["<vector_store_id>"]));
-
-OpenAIResponse response = (OpenAIResponse)client.CreateResponse([
-    ResponseItem.CreateUserMessageItem([
-        ResponseContentPart.CreateInputTextPart("What is deep research by OpenAI?"),
-    ]),
-], options);
-
-Console.WriteLine(response.GetOutputText());
+Enable detailed logging:
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
 ```
 
-When this tool is called by the model, you will receive a response with multiple outputs:
+## 🤝 Contributing
 
-1.  A `file_search_call` output item, which contains the id of the file search call.
-2.  A `message` output item, which contains the response from the model, along with the file citations.
+Contributions are welcome! Please follow these steps:
 
-File search response
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-```
-{
-  "output": [
-    {
-      "type": "file_search_call",
-      "id": "fs_67c09ccea8c48191ade9367e3ba71515",
-      "status": "completed",
-      "queries": ["What is deep research?"],
-      "search_results": null
-    },
-    {
-      "id": "msg_67c09cd3091c819185af2be5d13d87de",
-      "type": "message",
-      "role": "assistant",
-      "content": [
-        {
-          "type": "output_text",
-          "text": "Deep research is a sophisticated capability that allows for extensive inquiry and synthesis of information across various domains. It is designed to conduct multi-step research tasks, gather data from multiple online sources, and provide comprehensive reports similar to what a research analyst would produce. This functionality is particularly useful in fields requiring detailed and accurate information...",
-          "annotations": [
-            {
-              "type": "file_citation",
-              "index": 992,
-              "file_id": "file-2dtbBZdjtDKS8eqWxqbgDi",
-              "filename": "deep_research_blog.pdf"
-            },
-            {
-              "type": "file_citation",
-              "index": 992,
-              "file_id": "file-2dtbBZdjtDKS8eqWxqbgDi",
-              "filename": "deep_research_blog.pdf"
-            },
-            {
-              "type": "file_citation",
-              "index": 1176,
-              "file_id": "file-2dtbBZdjtDKS8eqWxqbgDi",
-              "filename": "deep_research_blog.pdf"
-            },
-            {
-              "type": "file_citation",
-              "index": 1176,
-              "file_id": "file-2dtbBZdjtDKS8eqWxqbgDi",
-              "filename": "deep_research_blog.pdf"
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
+## 📄 License
 
-Retrieval customization
------------------------
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Limiting the number of results
+## 👥 Authors
 
-Using the file search tool with the Responses API, you can customize the number of results you want to retrieve from the vector stores. This can help reduce both token usage and latency, but may come at the cost of reduced answer quality.
+**ProtonX Team**
+- GitHub: [@khnguyen0211](https://github.com/khnguyen0211)
+- Project: [openai-file-search](https://github.com/khnguyen0211/openai-file-search)
 
-Limit the number of results
+## 🙏 Acknowledgments
 
-```
-response = client.responses.create(
-    model="gpt-4.1",
-    input="What is deep research by OpenAI?",
-    tools=[{
-        "type": "file_search",
-        "vector_store_ids": ["<vector_store_id>"],
-        "max_num_results": 2
-    }]
-)
-print(response)
-```
+- [OpenAI](https://openai.com/) for providing the powerful AI APIs
+- OpenAI Responses API and Vector Stores documentation
+- Community contributors and testers
 
-```
-const response = await openai.responses.create({
-    model: "gpt-4.1",
-    input: "What is deep research by OpenAI?",
-    tools: [{
-        type: "file_search",
-        vector_store_ids: ["<vector_store_id>"],
-        max_num_results: 2,
-    }],
-});
-console.log(response);
-```
+## 📞 Support
 
-### Include search results in the response
+For questions and support:
+- 📖 Check [SETUP.md](SETUP.md) for detailed documentation
+- 🚀 See [QUICK_REF.md](QUICK_REF.md) for quick reference
+- 🐛 Report issues on [GitHub Issues](https://github.com/khnguyen0211/openai-file-search/issues)
 
-While you can see annotations (references to files) in the output text, the file search call will not return search results by default.
+---
 
-To include search results in the response, you can use the `include` parameter when creating the response.
-
-Include search results
-
-```
-response = client.responses.create(
-    model="gpt-4.1",
-    input="What is deep research by OpenAI?",
-    tools=[{
-        "type": "file_search",
-        "vector_store_ids": ["<vector_store_id>"]
-    }],
-    include=["file_search_call.results"]
-)
-print(response)
-```
-
-```
-const response = await openai.responses.create({
-    model: "gpt-4.1",
-    input: "What is deep research by OpenAI?",
-    tools: [{
-        type: "file_search",
-        vector_store_ids: ["<vector_store_id>"],
-    }],
-    include: ["file_search_call.results"],
-});
-console.log(response);
-```
-
-### Metadata filtering
-
-You can filter the search results based on the metadata of the files. For more details, refer to our [retrieval guide](/docs/guides/retrieval), which covers:
-
-*   How to [set attributes on vector store files](/docs/guides/retrieval#attributes)
-*   How to [define filters](/docs/guides/retrieval#attribute-filtering)
-
-Metadata filtering
-
-```
-response = client.responses.create(
-    model="gpt-4.1",
-    input="What is deep research by OpenAI?",
-    tools=[{
-        "type": "file_search",
-        "vector_store_ids": ["<vector_store_id>"],
-        "filters": {
-            "type": "in",
-            "key": "category",
-            "value": ["blog", "announcement"]
-        }
-    }]
-)
-print(response)
-```
-
-```
-const response = await openai.responses.create({
-    model: "gpt-4.1",
-    input: "What is deep research by OpenAI?",
-    tools: [{
-        type: "file_search",
-        vector_store_ids: ["<vector_store_id>"],
-        filters: {
-            type: "in",
-            key: "category",
-            value: ["blog", "announcement"]
-        }
-    }]
-});
-console.log(response);
-```
-
-Supported files
----------------
-
-_For `text/` MIME types, the encoding must be one of `utf-8`, `utf-16`, or `ascii`._
-
-|File format|MIME type|
-|---|---|
-|.c|text/x-c|
-|.cpp|text/x-c++|
-|.cs|text/x-csharp|
-|.css|text/css|
-|.doc|application/msword|
-|.docx|application/vnd.openxmlformats-officedocument.wordprocessingml.document|
-|.go|text/x-golang|
-|.html|text/html|
-|.java|text/x-java|
-|.js|text/javascript|
-|.json|application/json|
-|.md|text/markdown|
-|.pdf|application/pdf|
-|.php|text/x-php|
-|.pptx|application/vnd.openxmlformats-officedocument.presentationml.presentation|
-|.py|text/x-python|
-|.py|text/x-script.python|
-|.rb|text/x-ruby|
-|.sh|application/x-sh|
-|.tex|text/x-tex|
-|.ts|application/typescript|
-|.txt|text/plain|
-
-Usage notes
------------
-
-||
-|ResponsesChat CompletionsAssistants|Tier 1100 RPMTier 2 and 3500 RPMTier 4 and 51000 RPM|PricingZDR and data residency|
+**Built with ❤️ using OpenAI's cutting-edge AI technology**
