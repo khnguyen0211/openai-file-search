@@ -196,15 +196,19 @@ class VectorStoreSearcher:
         search_results = []
         
         for item in response.output:
-            if item.type == "file_search_call" and hasattr(item, 'search_results'):
-                if item.search_results:
-                    for result in item.search_results:
-                        search_results.append({
-                            'content': result.content if hasattr(result, 'content') else '',
-                            'score': result.score if hasattr(result, 'score') else 0.0,
-                            'file_id': result.file_id if hasattr(result, 'file_id') else '',
-                            'filename': result.filename if hasattr(result, 'filename') else ''
-                        })
+            if item.type == "file_search_call" and hasattr(item, "results"):
+                if item.results:
+                    for result in item.results:
+                        search_results.append(
+                            {
+                                "content": result.text if hasattr(result, "text") else "",
+                                "score": result.score if hasattr(result, "score") else 0.0,
+                                "file_id": result.file_id if hasattr(result, "file_id") else "",
+                                "filename": result.filename
+                                if hasattr(result, "filename")
+                                else "",
+                            }
+                        )
         
         return search_results
     
